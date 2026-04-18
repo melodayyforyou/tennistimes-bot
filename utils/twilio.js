@@ -10,9 +10,9 @@ function getHeaders() {
   return { Authorization: process.env.FONNTE_TOKEN };
 }
 
-/** Strip whatsapp: prefix and + so Fonnte gets a clean number like 628xxx */
+/** Strip whatsapp: prefix and leading + so Fonnte gets 628xxx or 120363xxx@g.us */
 function cleanTarget(number) {
-  return number.replace('whatsapp:', '').replace('+', '');
+  return number.replace('whatsapp:', '').replace(/^\+/, '');
 }
 
 /**

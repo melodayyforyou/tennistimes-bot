@@ -84,13 +84,13 @@ app.post('/webhook', async (req, res) => {
   const isGroup     = req.body.isgroup === true || req.body.isgroup === 'true';
   const profileName = req.body.name || req.body.sender || '';
 
-  // In a group: sender = group ID, member = person who typed
-  // In private: sender = the person's number
+  // In a group: sender = full group ID (e.g. 120363xxx@g.us), member = person who typed
+  // In private: sender = the person's number (e.g. 62811663161)
   const senderRaw = isGroup
-    ? (req.body.sender || '').replace(/@[cgs]\.us$/i, '')   // group ID → reply to group
+    ? (req.body.sender || '')                                          // keep @g.us — Fonnte needs it to reply to group
     : (req.body.sender || req.body.from || '').replace(/@[cgs]\.us$/i, '');
 
-  // Normalise to whatsapp:628xxx or whatsapp:groupID
+  // Normalise to whatsapp:628xxx or whatsapp:120363xxx@g.us
   const from = senderRaw.startsWith('whatsapp:') ? senderRaw : `whatsapp:${senderRaw}`;
 
   if (!rawBody || !senderRaw) return;
