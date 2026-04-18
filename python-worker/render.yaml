@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: tennistimes-python-worker
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: PYTHON_ENV
+        value: production
