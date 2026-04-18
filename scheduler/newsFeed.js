@@ -23,17 +23,39 @@ function resetDaily() {
 
 // ─── Fetch sources ────────────────────────────────────────────────────────────
 
+// Keywords that must appear in title or description for article to be considered tennis
+const TENNIS_KEYWORDS = [
+  'tennis', 'tenis', 'atp', 'wta', 'grand slam', 'wimbledon', 'us open',
+  'french open', 'australian open', 'roland garros', 'serve', 'forehand',
+  'backhand', 'racket', 'court', 'set ', 'match point', 'tournament',
+  'djokovic', 'alcaraz', 'sinner', 'swiatek', 'nadal', 'federer',
+];
+
+function isTennisRelevant(article) {
+  const text = `${article.title} ${article.description}`.toLowerCase();
+  return TENNIS_KEYWORDS.some(kw => text.includes(kw));
+}
+
 async function fetchNewsAPI() {
   try {
     const res = await axios.get('https://newsapi.org/v2/everything', {
-      params: { q: 'tennis', language: 'en', sortBy: 'publishedAt', pageSize: 5, apiKey: process.env.NEWSAPI_KEY },
+      params: {
+        // More specific query — must include tennis AND a sport-related term
+        q: 'tennis AND (player OR tournament OR match OR ATP OR WTA OR Grand Slam OR ranking)',
+        language: 'en',
+        sortBy: 'publishedAt',
+        pageSize: 15,  // Fetch more so we have enough after filtering
+        apiKey: process.env.NEWSAPI_KEY,
+      },
       timeout: 10_000,
     });
-    return (res.data.articles || []).map((a) => ({
+    const articles = (res.data.articles || []).map((a) => ({
       title: a.title || '',
       description: a.description || '',
       source: a.source?.name || 'NewsAPI',
     }));
+    // Keep only articles that are genuinely tennis-related
+    return articles.filter(isTennisRelevant);
   } catch (err) {
     console.error('[newsFeed] NewsAPI error:', err.message);
     return [];
@@ -126,6 +148,8 @@ async function pushNewsFeed(session) {
     `Summarize these tennis news articles into a WhatsApp update for the TennisTV.id team.\n` +
     `Format: emoji header, bullet points, max 5 items, include source names.\n` +
     `Keep it short and scannable. End with — Tennistimes.id bot 🎾\n\n` +
+    `IMPORTANT: Only include articles that are directly about tennis (players, tournaments, matches, rankings).\n` +
+    `Skip anything that is not tennis — even if the word "tennis" appears in passing.\n\n` +
     `Header label to use: ${label}\n\n` +
     `Articles:\n${articleList}`;
 
