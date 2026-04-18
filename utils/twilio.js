@@ -34,11 +34,18 @@ async function sendMessage(to, body) {
  */
 async function sendMedia(to, body, mediaUrl) {
   const target = cleanTarget(to);
-  await axios.post(
+
+  // Extract filename from URL so Fonnte knows the file type (e.g. deck_xxx.pptx)
+  const filename = mediaUrl.split('/').pop();
+
+  const response = await axios.post(
     FONNTE_URL,
-    { target, message: body, url: mediaUrl },
+    { target, message: body, url: mediaUrl, filename },
     { headers: getHeaders() }
   );
+
+  console.log('[fonnte] sendMedia response:', JSON.stringify(response.data));
+  return response.data;
 }
 
 module.exports = { sendMessage, sendMedia };
