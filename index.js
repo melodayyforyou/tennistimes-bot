@@ -79,11 +79,6 @@ app.post('/webhook', async (req, res) => {
   lastWebhookPayload = { body: req.body, headers: req.headers, time: new Date().toISOString() };
   console.log('[webhook] Received:', JSON.stringify(req.body));
 
-  // Debug: immediately ACK so we know the webhook fired
-  const debugSender = (req.body.sender || '').replace(/@[cgs]\.us$/i, '');
-  if (debugSender) {
-    sendMessage(`whatsapp:${debugSender}`, `🔧 Bot received: "${req.body.message || '?'}"`).catch(() => {});
-  }
 
   const rawBody     = (req.body.message || req.body.text || '').trim();
   const senderRaw   = (req.body.sender || req.body.from || '').replace(/@[cgs]\.us$/i, '');
@@ -100,48 +95,48 @@ app.post('/webhook', async (req, res) => {
   try {
     if (lower.startsWith('/deck')) {
       const brief = rawBody.slice(5).trim();
-      if (!brief) return sendMessage(from, '🎾 Usage: /deck [brief]\nContoh: /deck strategi Q3 TennisTV');
-      return handleDeck(brief, from, BASE_URL);
+      if (!brief) return await sendMessage(from, '🎾 Usage: /deck [brief]\nContoh: /deck strategi Q3 TennisTV');
+      return await handleDeck(brief, from, BASE_URL);
     }
 
     if (lower.startsWith('/sheet')) {
       const brief = rawBody.slice(6).trim();
-      if (!brief) return sendMessage(from, '🎾 Usage: /sheet [brief]\nContoh: /sheet data registrasi Jakarta Open');
-      return handleSheet(brief, from, BASE_URL);
+      if (!brief) return await sendMessage(from, '🎾 Usage: /sheet [brief]\nContoh: /sheet data registrasi Jakarta Open');
+      return await handleSheet(brief, from, BASE_URL);
     }
 
     if (lower.startsWith('/brief')) {
       const topic = rawBody.slice(6).trim();
-      if (!topic) return sendMessage(from, '🎾 Usage: /brief [topic]\nContoh: /brief perkembangan tenis Indonesia 2025');
-      return handleBrief(topic, from, BASE_URL);
+      if (!topic) return await sendMessage(from, '🎾 Usage: /brief [topic]\nContoh: /brief perkembangan tenis Indonesia 2025');
+      return await handleBrief(topic, from, BASE_URL);
     }
 
     if (lower.startsWith('/post')) {
       const brief = rawBody.slice(5).trim();
-      if (!brief) return sendMessage(from, '🎾 Usage: /post [brief]\nContoh: /post highlights final Jakarta Open');
-      return handlePost(brief, from);
+      if (!brief) return await sendMessage(from, '🎾 Usage: /post [brief]\nContoh: /post highlights final Jakarta Open');
+      return await handlePost(brief, from);
     }
 
     if (lower.startsWith('/ask')) {
       const question = rawBody.slice(4).trim();
-      if (!question) return sendMessage(from, '🎾 Usage: /ask [pertanyaan]\nContoh: /ask ranking 1 tenis Indonesia?');
-      return handleAsk(question, from);
+      if (!question) return await sendMessage(from, '🎾 Usage: /ask [pertanyaan]\nContoh: /ask ranking 1 tenis Indonesia?');
+      return await handleAsk(question, from);
     }
 
     if (lower.startsWith('/note')) {
       const text = rawBody.slice(5).trim();
-      if (!text) return sendMessage(from, '🎾 Usage: /note [text]\nContoh: /note rapat sponsor Selasa 14:00');
-      return handleNote(text, from, profileName);
+      if (!text) return await sendMessage(from, '🎾 Usage: /note [text]\nContoh: /note rapat sponsor Selasa 14:00');
+      return await handleNote(text, from, profileName);
     }
 
     if (lower.startsWith('/task')) {
       const text = rawBody.slice(5).trim();
-      if (!text) return sendMessage(from, '🎾 Usage: /task [description]\nContoh: /task upload konten IG Jakarta Open');
-      return handleTask(text, from, profileName);
+      if (!text) return await sendMessage(from, '🎾 Usage: /task [description]\nContoh: /task upload konten IG Jakarta Open');
+      return await handleTask(text, from, profileName);
     }
 
     if (['hi', 'halo', 'hello', 'hey', '/help', 'start'].includes(lower)) {
-      return sendMessage(from,
+      return await sendMessage(from,
         `🎾 *Tennistimes.id Bot*\n` +
         `TennisTV.id Production Assistant\n\n` +
         `*File Generator:*\n` +
