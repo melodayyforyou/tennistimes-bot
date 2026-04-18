@@ -81,16 +81,25 @@ app.post('/webhook', async (req, res) => {
 
 
   const rawBody     = (req.body.message || req.body.text || '').trim();
-  const senderRaw   = (req.body.sender || req.body.from || '').replace(/@[cgs]\.us$/i, '');
-  const profileName = req.body.name || senderRaw;
+  const isGroup     = req.body.isgroup === true || req.body.isgroup === 'true';
+  const profileName = req.body.name || req.body.sender || '';
 
-  // Normalise to whatsapp:628xxx so all command files work unchanged
+  // In a group: sender = group ID, member = person who typed
+  // In private: sender = the person's number
+  const senderRaw = isGroup
+    ? (req.body.sender || '').replace(/@[cgs]\.us$/i, '')   // group ID → reply to group
+    : (req.body.sender || req.body.from || '').replace(/@[cgs]\.us$/i, '');
+
+  // Normalise to whatsapp:628xxx or whatsapp:groupID
   const from = senderRaw.startsWith('whatsapp:') ? senderRaw : `whatsapp:${senderRaw}`;
 
   if (!rawBody || !senderRaw) return;
 
+  // In groups, only respond to messages that start with / — ignore casual chat
+  if (isGroup && !rawBody.startsWith('/')) return;
+
   const lower = rawBody.toLowerCase();
-  console.log(`[webhook] ${profileName} (${senderRaw}): ${rawBody.slice(0, 80)}`);
+  console.log(`[webhook] ${isGroup ? 'GROUP' : 'DM'} ${profileName}: ${rawBody.slice(0, 80)}`);
 
   try {
     if (lower.startsWith('/deck')) {
