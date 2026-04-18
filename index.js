@@ -79,6 +79,12 @@ app.post('/webhook', async (req, res) => {
   lastWebhookPayload = { body: req.body, headers: req.headers, time: new Date().toISOString() };
   console.log('[webhook] Received:', JSON.stringify(req.body));
 
+  // Debug: immediately ACK so we know the webhook fired
+  const debugSender = (req.body.sender || '').replace(/@[cgs]\.us$/i, '');
+  if (debugSender) {
+    sendMessage(`whatsapp:${debugSender}`, `🔧 Bot received: "${req.body.message || '?'}"`).catch(() => {});
+  }
+
   const rawBody     = (req.body.message || req.body.text || '').trim();
   const senderRaw   = (req.body.sender || req.body.from || '').replace(/@[cgs]\.us$/i, '');
   const profileName = req.body.name || senderRaw;
