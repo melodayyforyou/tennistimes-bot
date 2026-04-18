@@ -13,6 +13,7 @@ const { handlePost }  = require('./commands/post');
 const { handleAsk }   = require('./commands/ask');
 const { handleNote }  = require('./commands/note');
 const { handleTask }  = require('./commands/task');
+const { handleNews }  = require('./commands/news');
 const { sendMessage } = require('./utils/twilio');
 const { startScheduler } = require('./scheduler/newsFeed');
 
@@ -144,6 +145,10 @@ app.post('/webhook', async (req, res) => {
       return await handleTask(text, from, profileName);
     }
 
+    if (lower === '/news') {
+      return await handleNews(from);
+    }
+
     if (['hi', 'halo', 'hello', 'hey', '/help', 'start'].includes(lower)) {
       return await sendMessage(from,
         `🎾 *Tennistimes.id Bot*\n` +
@@ -158,6 +163,7 @@ app.post('/webhook', async (req, res) => {
         `*Productivity:*\n` +
         `/note [text] — simpan catatan\n` +
         `/task [text] — buat task\n\n` +
+        `/news — trigger berita tenis sekarang\n\n` +
         `Auto-push berita tenis 3x/hari ke grup 🎾`
       );
     }

@@ -87,8 +87,18 @@ async function pushNewsFeed(session) {
   }
 
   if (newArticles.length === 0) {
-    console.log('[newsFeed] No articles found — skipping');
-    return;
+    // Manual trigger: still push even if all articles were seen before
+    if (session === 'manual') {
+      const fallback = [...apiArticles, ...rssArticles].slice(0, 5);
+      if (fallback.length === 0) {
+        console.log('[newsFeed] No articles found at all — skipping');
+        return;
+      }
+      fallback.forEach(a => newArticles.push(a));
+    } else {
+      console.log('[newsFeed] No articles found — skipping');
+      return;
+    }
   }
 
   const articleList = newArticles
@@ -109,7 +119,8 @@ async function pushNewsFeed(session) {
     morning: `🎾 PAGI — ${today}`,
     midday:  `⚡ SIANG FLASH`,
     evening: `🌙 MALAM RECAP`,
-  }[session];
+    manual:  `📡 TENNIS UPDATE — ${today}`,
+  }[session] || `📡 TENNIS UPDATE — ${today}`;
 
   const prompt =
     `Summarize these tennis news articles into a WhatsApp update for the TennisTV.id team.\n` +
