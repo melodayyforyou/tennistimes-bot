@@ -76,7 +76,7 @@ app.post('/webhook', async (req, res) => {
   res.sendStatus(200);
 
   // Store full payload for debugging
-  lastWebhookPayload = { body: req.body, headers: req.headers, time: new Date().toISOString() };
+  lastWebhookPayload = { body: req.body, time: new Date().toISOString() };
   console.log('[webhook] Received:', JSON.stringify(req.body));
 
 
