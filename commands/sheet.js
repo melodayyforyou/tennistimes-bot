@@ -51,7 +51,7 @@ async function handleSheet(brief, from, baseUrl) {
 
   await sendMedia(
     from,
-    `✅ *${data.title}*\n📊 ${rowCount} rows — spreadsheet siap!\n⬇️ Download di bawah`,
+    `✅ *${data.title}*\n📊 ${rowCount} rows — spreadsheet siap!\n\n⬇️ *Download XLSX:*\n${fileUrl}`,
     fileUrl
   );
 

@@ -50,7 +50,7 @@ async function handleDeck(brief, from, baseUrl) {
 
   await sendMedia(
     from,
-    `✅ *${data.title}*\n📊 ${slideCount} slides — deck siap!\n⬇️ Download di bawah`,
+    `✅ *${data.title}*\n📊 ${slideCount} slides — deck siap!\n\n⬇️ *Download PPTX:*\n${fileUrl}`,
     fileUrl
   );
 

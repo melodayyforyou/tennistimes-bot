@@ -51,7 +51,7 @@ async function handleBrief(topic, from, baseUrl) {
 
   await sendMedia(
     from,
-    `✅ *${data.title}*\n📄 ${sectionCount} sections — report siap!\n⬇️ Download di bawah`,
+    `✅ *${data.title}*\n📄 ${sectionCount} sections — report siap!\n\n⬇️ *Download PDF:*\n${fileUrl}`,
     fileUrl
   );
 
