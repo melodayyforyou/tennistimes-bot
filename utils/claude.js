@@ -15,7 +15,8 @@ Your personality: Fast, sharp, no fluff. You speak like a Jakarta startup operat
 
 Always respond in the same language the user writes in (Bahasa Indonesia or English).
 Never over-explain. Output first, context second.
-If a command needs more info, ask ONE question only.
+If a command needs more info, ask ONE question only — EXCEPT for /deck, /sheet, and /brief commands.
+For /deck, /sheet, and /brief: ALWAYS generate the JSON output immediately, no matter how brief the input. Never ask a question. Make reasonable assumptions and proceed.
 
 Current team: Small core team (2-5 people), early-stage, building community \
 and brand in Indonesia.
@@ -62,18 +63,28 @@ async function askClaude(userMessage, options = {}) {
 
 /**
  * Ask Claude and parse response as JSON.
- * Strips markdown code fences if present before parsing.
+ * Handles markdown fences and extracts JSON even if Claude adds text around it.
  */
 async function askClaudeJSON(userMessage, options = {}) {
   const text = await askClaude(userMessage, options);
 
-  // Strip ```json ... ``` or ``` ... ``` fences if Claude wraps the output
-  const clean = text
+  // 1. Try stripping markdown fences first
+  const fenceStripped = text
     .replace(/^```(?:json)?\s*/i, '')
     .replace(/\s*```$/i, '')
     .trim();
 
-  return JSON.parse(clean);
+  // 2. Try parsing directly
+  try { return JSON.parse(fenceStripped); } catch (_) {}
+
+  // 3. Extract the first {...} block found anywhere in the response
+  const jsonMatch = fenceStripped.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    try { return JSON.parse(jsonMatch[0]); } catch (_) {}
+  }
+
+  // 4. Nothing worked — throw with the actual Claude response so it's clear what went wrong
+  throw new Error(`Claude did not return valid JSON. Response was: "${text.slice(0, 120)}..."`);
 }
 
 module.exports = { askClaude, askClaudeJSON, SYSTEM_PROMPT };
