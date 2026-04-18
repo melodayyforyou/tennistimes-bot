@@ -46,6 +46,24 @@ app.get('/', (_req, res) => {
   res.json({ status: 'ok', bot: 'Tennistimes.id 🎾', time: new Date().toISOString() });
 });
 
+// ─── Debug: test Fonnte send from Railway ─────────────────────────────────────
+// Call: GET /debug-send?to=628xxxxxx
+app.get('/debug-send', async (req, res) => {
+  const to = req.query.to || '62811663161';
+  try {
+    await sendMessage(`whatsapp:${to}`, '🔧 Debug: Railway → Fonnte send works!');
+    res.json({ status: 'sent', to });
+  } catch (err) {
+    res.json({ status: 'error', error: err.message });
+  }
+});
+
+// ─── Debug: log last webhook payload ─────────────────────────────────────────
+let lastWebhookPayload = null;
+app.get('/debug-webhook', (_req, res) => {
+  res.json({ lastPayload: lastWebhookPayload, time: new Date().toISOString() });
+});
+
 // ─── Fonnte webhook ───────────────────────────────────────────────────────────
 // Fonnte verifies the URL with GET first, then sends messages via POST.
 // Payload fields: sender, message, name, device
@@ -56,6 +74,10 @@ app.get('/webhook', (_req, res) => res.sendStatus(200));
 app.post('/webhook', async (req, res) => {
   // Respond immediately so Fonnte doesn't retry
   res.sendStatus(200);
+
+  // Store full payload for debugging
+  lastWebhookPayload = { body: req.body, headers: req.headers, time: new Date().toISOString() };
+  console.log('[webhook] Received:', JSON.stringify(req.body));
 
   const rawBody     = (req.body.message || req.body.text || '').trim();
   const senderRaw   = (req.body.sender || req.body.from || '').replace(/@[cgs]\.us$/i, '');
