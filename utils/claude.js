@@ -62,29 +62,41 @@ async function askClaude(userMessage, options = {}) {
 }
 
 /**
- * Ask Claude and parse response as JSON.
- * Handles markdown fences and extracts JSON even if Claude adds text around it.
+ * Try to extract a JSON object from a string.
+ * Handles markdown fences and text surrounding the JSON block.
+ * Returns parsed object, or throws if no valid JSON found.
  */
-async function askClaudeJSON(userMessage, options = {}) {
-  const text = await askClaude(userMessage, options);
-
-  // 1. Try stripping markdown fences first
+function extractJSON(text) {
   const fenceStripped = text
     .replace(/^```(?:json)?\s*/i, '')
     .replace(/\s*```$/i, '')
     .trim();
 
-  // 2. Try parsing directly
   try { return JSON.parse(fenceStripped); } catch (_) {}
 
-  // 3. Extract the first {...} block found anywhere in the response
   const jsonMatch = fenceStripped.match(/\{[\s\S]*\}/);
   if (jsonMatch) {
     try { return JSON.parse(jsonMatch[0]); } catch (_) {}
   }
 
-  // 4. Nothing worked — throw with the actual Claude response so it's clear what went wrong
-  throw new Error(`Claude did not return valid JSON. Response was: "${text.slice(0, 120)}..."`);
+  throw new Error('NO_JSON'); // sentinel — caller checks for this
+}
+
+/**
+ * Ask Claude and parse response as JSON.
+ * If Claude responds with text (e.g. a clarifying question) instead of JSON,
+ * throws an error with code NO_JSON and includes the raw text as .rawText.
+ */
+async function askClaudeJSON(userMessage, options = {}) {
+  const text = await askClaude(userMessage, options);
+  try {
+    return extractJSON(text);
+  } catch (_) {
+    const err = new Error('NO_JSON');
+    err.code = 'NO_JSON';
+    err.rawText = text; // Claude's actual response (the clarifying question)
+    throw err;
+  }
 }
 
 module.exports = { askClaude, askClaudeJSON, SYSTEM_PROMPT };

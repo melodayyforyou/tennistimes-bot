@@ -65,6 +65,26 @@ app.get('/debug-webhook', (_req, res) => {
   res.json({ lastPayload: lastWebhookPayload, time: new Date().toISOString() });
 });
 
+// ─── Pending sessions (2-step file commands) ─────────────────────────────────
+// When Claude asks a clarifying question instead of returning JSON,
+// we store the pending command here keyed by the individual sender's number.
+// On their next message (non-command) we combine the original brief + their answer.
+const pendingSessions = new Map(); // key: memberNumber → { command, brief, expiresAt }
+
+function setPending(memberKey, command, brief) {
+  pendingSessions.set(memberKey, {
+    command, brief,
+    expiresAt: Date.now() + 10 * 60 * 1000, // expires after 10 minutes
+  });
+}
+
+function getPending(memberKey) {
+  const session = pendingSessions.get(memberKey);
+  if (!session) return null;
+  if (Date.now() > session.expiresAt) { pendingSessions.delete(memberKey); return null; }
+  return session;
+}
+
 // ─── Fonnte webhook ───────────────────────────────────────────────────────────
 // Fonnte verifies the URL with GET first, then sends messages via POST.
 // Payload fields: sender, message, name, device
@@ -91,12 +111,34 @@ app.post('/webhook', async (req, res) => {
     ? (req.body.sender || '')                                          // keep @g.us — Fonnte needs it to reply to group
     : (req.body.sender || req.body.from || '').replace(/@[cgs]\.us$/i, '');
 
+  // Individual person's number — used as session key so each person has their own pending state
+  const memberKey = isGroup
+    ? (req.body.member || '').replace(/@[cgs]\.us$/i, '')
+    : senderRaw;
+
   // Normalise to whatsapp:628xxx or whatsapp:120363xxx@g.us
   const from = senderRaw.startsWith('whatsapp:') ? senderRaw : `whatsapp:${senderRaw}`;
 
   if (!rawBody || !senderRaw) return;
 
-  // In groups, only respond to messages that start with / — ignore casual chat
+  // Check if this is a follow-up answer to a pending file command
+  const pending = getPending(memberKey);
+  if (pending && !rawBody.startsWith('/')) {
+    pendingSessions.delete(memberKey);
+    const combinedBrief = `${pending.brief}\n\nAdditional context from user: ${rawBody}`;
+    console.log(`[webhook] Follow-up for /${pending.command} from ${memberKey}`);
+    try {
+      if (pending.command === 'deck')  return await handleDeck(combinedBrief, from, BASE_URL);
+      if (pending.command === 'sheet') return await handleSheet(combinedBrief, from, BASE_URL);
+      if (pending.command === 'brief') return await handleBrief(combinedBrief, from, BASE_URL);
+    } catch (err) {
+      console.error('[webhook] Follow-up error:', err.message);
+      try { await sendMessage(from, `⚠️ Error: ${err.message}`); } catch (_) {}
+    }
+    return;
+  }
+
+  // In groups, only respond to / commands (ignore casual chat)
   if (isGroup && !rawBody.startsWith('/')) return;
 
   const lower = rawBody.toLowerCase();
@@ -106,19 +148,25 @@ app.post('/webhook', async (req, res) => {
     if (lower.startsWith('/deck')) {
       const brief = rawBody.slice(5).trim();
       if (!brief) return await sendMessage(from, '🎾 Usage: /deck [brief]\nContoh: /deck strategi Q3 TennisTV');
-      return await handleDeck(brief, from, BASE_URL);
+      const result = await handleDeck(brief, from, BASE_URL);
+      if (result?.pending) setPending(memberKey, result.command, result.brief);
+      return;
     }
 
     if (lower.startsWith('/sheet')) {
       const brief = rawBody.slice(6).trim();
       if (!brief) return await sendMessage(from, '🎾 Usage: /sheet [brief]\nContoh: /sheet data registrasi Jakarta Open');
-      return await handleSheet(brief, from, BASE_URL);
+      const result = await handleSheet(brief, from, BASE_URL);
+      if (result?.pending) setPending(memberKey, result.command, result.brief);
+      return;
     }
 
     if (lower.startsWith('/brief')) {
       const topic = rawBody.slice(6).trim();
       if (!topic) return await sendMessage(from, '🎾 Usage: /brief [topic]\nContoh: /brief perkembangan tenis Indonesia 2025');
-      return await handleBrief(topic, from, BASE_URL);
+      const result = await handleBrief(topic, from, BASE_URL);
+      if (result?.pending) setPending(memberKey, result.command, result.brief);
+      return;
     }
 
     if (lower.startsWith('/post')) {

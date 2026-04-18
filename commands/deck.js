@@ -14,14 +14,23 @@ const { sendMedia, sendMessage } = require('../utils/twilio');
  * 4. Send file via Twilio WhatsApp
  */
 async function handleDeck(brief, from, baseUrl) {
-  await sendMessage(from, `🎾 Generating deck: _"${brief}"_\nLagi diproses... 🔄`);
+  let data;
+  try {
+    data = await askClaudeJSON(
+      `Create a professional presentation deck for: "${brief}"\n` +
+      `Make 6–8 slides. First slide is title only. Last slide is CTA/summary. ` +
+      `Context: TennisTV.id — Indonesian tennis community brand.`
+    );
+  } catch (err) {
+    if (err.code === 'NO_JSON') {
+      // Claude asked a clarifying question — send it and signal pending state
+      await sendMessage(from, err.rawText);
+      return { pending: true, command: 'deck', brief };
+    }
+    throw err;
+  }
 
-  // The system prompt already specifies the JSON schema — just describe the deck
-  const data = await askClaudeJSON(
-    `Create a professional presentation deck for: "${brief}"\n` +
-    `Make 6–8 slides. First slide is title only. Last slide is CTA/summary. ` +
-    `Context: TennisTV.id — Indonesian tennis community brand.`
-  );
+  await sendMessage(from, `🎾 Generating deck: _"${brief}"_\nLagi diproses... 🔄`);
 
   const workerRes = await axios.post(
     `${process.env.PYTHON_WORKER_URL}/generate-pptx`,

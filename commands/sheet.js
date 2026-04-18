@@ -15,15 +15,23 @@ const { sendMedia, sendMessage } = require('../utils/twilio');
  * 4. Send file via Twilio WhatsApp
  */
 async function handleSheet(brief, from, baseUrl) {
-  await sendMessage(from, `🎾 Generating spreadsheet: _"${brief}"_\nLagi diproses... 🔄`);
+  let data;
+  try {
+    data = await askClaudeJSON(
+      `Create a spreadsheet for: "${brief}"\n` +
+      `Include relevant column headers and 5–10 realistic sample data rows. ` +
+      `Use numbers (not strings) for numeric columns. ` +
+      `Context: TennisTV.id operations — tournaments, registrations, media, sponsors.`
+    );
+  } catch (err) {
+    if (err.code === 'NO_JSON') {
+      await sendMessage(from, err.rawText);
+      return { pending: true, command: 'sheet', brief };
+    }
+    throw err;
+  }
 
-  // System prompt defines schema: { title, headers, rows[], summary }
-  const data = await askClaudeJSON(
-    `Create a spreadsheet for: "${brief}"\n` +
-    `Include relevant column headers and 5–10 realistic sample data rows. ` +
-    `Use numbers (not strings) for numeric columns. ` +
-    `Context: TennisTV.id operations — tournaments, registrations, media, sponsors.`
-  );
+  await sendMessage(from, `🎾 Generating spreadsheet: _"${brief}"_\nLagi diproses... 🔄`);
 
   const workerRes = await axios.post(
     `${process.env.PYTHON_WORKER_URL}/generate-xlsx`,

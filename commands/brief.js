@@ -15,15 +15,23 @@ const { sendMedia, sendMessage } = require('../utils/twilio');
  * 4. Send file via Twilio WhatsApp
  */
 async function handleBrief(topic, from, baseUrl) {
-  await sendMessage(from, `🎾 Generating report: _"${topic}"_\nLagi diproses... 🔄`);
+  let data;
+  try {
+    data = await askClaudeJSON(
+      `Write a comprehensive brief/report about: "${topic}"\n` +
+      `Include 4–6 sections. Start with Executive Summary. End with Recommendations. ` +
+      `Write each section as full paragraphs — no markdown, no bullet lists inside body. ` +
+      `Context: TennisTV.id — Indonesian tennis community, media brand, tournament organizer.`
+    );
+  } catch (err) {
+    if (err.code === 'NO_JSON') {
+      await sendMessage(from, err.rawText);
+      return { pending: true, command: 'brief', brief: topic };
+    }
+    throw err;
+  }
 
-  // System prompt defines schema: { title, sections[{ heading, body }] }
-  const data = await askClaudeJSON(
-    `Write a comprehensive brief/report about: "${topic}"\n` +
-    `Include 4–6 sections. Start with Executive Summary. End with Recommendations. ` +
-    `Write each section as full paragraphs — no markdown, no bullet lists inside body. ` +
-    `Context: TennisTV.id — Indonesian tennis community, media brand, tournament organizer.`
-  );
+  await sendMessage(from, `🎾 Generating report: _"${topic}"_\nLagi diproses... 🔄`);
 
   const workerRes = await axios.post(
     `${process.env.PYTHON_WORKER_URL}/generate-pdf`,
