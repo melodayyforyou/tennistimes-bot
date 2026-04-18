@@ -47,18 +47,18 @@ app.get('/', (_req, res) => {
 });
 
 // ─── Fonnte webhook ───────────────────────────────────────────────────────────
-// Fonnte sends POST with JSON body:
-//   sender  — sender's phone number e.g. "6281234567890"
-//   message — message text
-//   name    — sender's display name
-//   device  — your registered Fonnte device number
+// Fonnte verifies the URL with GET first, then sends messages via POST.
+// Payload fields: sender, message, name, device
+
+// GET /webhook — URL verification (Fonnte pings this to confirm the URL is alive)
+app.get('/webhook', (_req, res) => res.sendStatus(200));
 
 app.post('/webhook', async (req, res) => {
   // Respond immediately so Fonnte doesn't retry
   res.sendStatus(200);
 
-  const rawBody    = (req.body.message || '').trim();
-  const senderRaw  = req.body.sender || '';
+  const rawBody     = (req.body.message || req.body.text || '').trim();
+  const senderRaw   = (req.body.sender || req.body.from || '').replace(/@[cgs]\.us$/i, '');
   const profileName = req.body.name || senderRaw;
 
   // Normalise to whatsapp:628xxx so all command files work unchanged
