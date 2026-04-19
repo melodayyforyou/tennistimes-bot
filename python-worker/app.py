@@ -61,6 +61,13 @@ def generate_pptx():
         WHITE  = RGBColor(0xFF, 0xFF, 0xFF)
         GRAY   = RGBColor(0xAA, 0xAA, 0xAA)
 
+        def safe_text(text):
+            """Strip characters that pptx XML can't encode."""
+            import re
+            text = str(text or '')
+            # Remove control characters except tab/newline
+            return re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', text)
+
         slides_data = data.get('slides', [])
 
         for i, slide_info in enumerate(slides_data):
@@ -78,7 +85,7 @@ def generate_pptx():
             # ── Slide title in gold ─────────────────────────────────────────
             title_shape = slide.shapes.title
             if title_shape:
-                title_shape.text = slide_info.get('title', '')
+                title_shape.text = safe_text(slide_info.get('title', ''))
                 for para in title_shape.text_frame.paragraphs:
                     para.font.bold  = True
                     para.font.color.rgb = GOLD
@@ -88,7 +95,7 @@ def generate_pptx():
             if is_title_slide:
                 for ph in slide.placeholders:
                     if ph.placeholder_format.idx == 1:
-                        ph.text = data.get('title', '')
+                        ph.text = safe_text(data.get('title', ''))
                         for para in ph.text_frame.paragraphs:
                             para.font.size      = Pt(22)
                             para.font.color.rgb = GRAY
@@ -104,7 +111,7 @@ def generate_pptx():
                             tf.clear()
                             for j, bullet in enumerate(content):
                                 para = tf.paragraphs[0] if j == 0 else tf.add_paragraph()
-                                para.text  = bullet
+                                para.text  = safe_text(bullet)
                                 para.level = 0
                                 para.font.size      = Pt(20)
                                 para.font.color.rgb = WHITE
@@ -181,6 +188,12 @@ def generate_xlsx():
         headers = data.get('headers', [])
         rows    = data.get('rows', [])
 
+        def safe_cell(v):
+            """Return numeric types as-is; coerce everything else to a plain string."""
+            if isinstance(v, (int, float)):
+                return v
+            return str(v) if v is not None else ''
+
         # Row 1 — TennisTV.id title spanning first few columns
         ws.append([f'TennisTV.id — {title}'])
         ws.row_dimensions[1].height = 28
@@ -201,9 +214,9 @@ def generate_xlsx():
                 cell.font      = WHITE_FONT
                 cell.alignment = CENTER
 
-        # Rows 3+ — Data
+        # Rows 3+ — Data (type-safe: keep numbers as numbers, coerce rest to str)
         for row in rows:
-            ws.append(row)
+            ws.append([safe_cell(cell) for cell in row])
 
         # Auto-fit column widths
         for col in ws.columns:
@@ -292,7 +305,11 @@ def generate_pdf():
         GREEN = (29, 106, 58)
         GRAY  = (100, 100, 100)
 
-        title = data.get('title', 'Report')
+        def safe(text):
+            """Encode any string to latin-1, replacing unmappable Unicode chars."""
+            return str(text).encode('latin-1', errors='replace').decode('latin-1')
+
+        title = safe(data.get('title', 'Report'))
 
         # ── Document title ──────────────────────────────────────────────────
         pdf.set_font('Helvetica', 'B', 20)
@@ -308,8 +325,8 @@ def generate_pdf():
 
         # ── Sections ────────────────────────────────────────────────────────
         for section in data.get('sections', []):
-            heading = (section.get('heading') or '').strip()
-            body    = (section.get('body')    or '').strip()
+            heading = safe((section.get('heading') or '').strip())
+            body    = safe((section.get('body')    or '').strip())
 
             if heading:
                 pdf.set_font('Helvetica', 'B', 13)
@@ -320,9 +337,7 @@ def generate_pdf():
             if body:
                 pdf.set_font('Helvetica', '', 11)
                 pdf.set_text_color(*DARK)
-                # Encode to latin-1 safely — replace unmappable Unicode chars
-                safe_body = body.encode('latin-1', errors='replace').decode('latin-1')
-                pdf.multi_cell(0, 7, safe_body)
+                pdf.multi_cell(0, 7, body)
                 pdf.ln(5)
 
         pdf_bytes = bytes(pdf.output())
