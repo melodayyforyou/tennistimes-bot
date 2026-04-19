@@ -277,7 +277,7 @@ class BrandedPDF(FPDF):
         self.set_y(-15)
         self.set_font('Helvetica', 'I', 8)
         self.set_text_color(150, 150, 150)
-        self.cell(0, 8, f'Page {self.page_no()} — TennisTV.id', align='C')
+        self.cell(0, 8, f'Page {self.page_no()} | TennisTV.id', align='C')
 
 
 @app.route('/generate-pdf', methods=['POST'])
